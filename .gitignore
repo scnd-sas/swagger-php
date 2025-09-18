@@ -4,3 +4,4 @@
 !/bin/swagger
 /swagger.json
 .phpunit.result.cache
+/.idea

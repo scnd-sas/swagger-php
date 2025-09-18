@@ -6,30 +6,12 @@
 
 namespace Swagger;
 
-use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\DocParser;
 use Exception;
 
-// Load all whitelisted annotations
-AnnotationRegistry::registerLoader(function ($class) {
-    if (Analyser::$whitelist === false) {
-        $whitelist = ['Swagger\Annotations\\'];
-    } else {
-        $whitelist = Analyser::$whitelist;
-    }
-    foreach ($whitelist as $namespace) {
-        if (strtolower(substr($class, 0, strlen($namespace))) === strtolower($namespace)) {
-            $loaded = class_exists($class);
-            if (!$loaded && $namespace === 'Swagger\Annotations\\') {
-                if (in_array(strtolower(substr($class, 20)), ['model', 'resource', 'api'])) { // Detected an 1.x annotation?
-                    throw new Exception('The annotation @SWG\\' . substr($class, 20) . '() is deprecated. Found in ' . Analyser::$context . "\nFor more information read the migration guide: https://github.com/zircote/swagger-php/blob/master/docs/Migrating-to-v2.md");
-                }
-            }
-            return $loaded;
-        }
-    }
-    return false;
-});
+// Note: AnnotationRegistry::registerLoader is deprecated in Doctrine Annotations v2.0
+// The autoloader logic is now handled by Composer's PSR-4 autoloader
+// If you need custom annotation validation, implement it in the fromComment method instead
 
 /**
  * Extract swagger-php annotations from a [PHPDoc](http://en.wikipedia.org/wiki/PHPDoc) using Doctrine's DocParser.
@@ -67,6 +49,40 @@ class Analyser
             $docParser->setImports(static::$defaultImports);
         }
         $this->docParser = $docParser;
+    }
+
+    /**
+     * Validate if an annotation class should be processed based on whitelist
+     *
+     * @param string $class
+     * @return bool
+     */
+    private function validateAnnotationClass($class): bool
+    {
+        if (self::$whitelist === false) {
+            $whitelist = ['Swagger\Annotations\\'];
+        } else {
+            $whitelist = self::$whitelist;
+        }
+
+        foreach ($whitelist as $namespace) {
+            if (strtolower(substr($class, 0, strlen($namespace))) === strtolower($namespace)) {
+                // Check if class exists (Composer autoloader will handle loading)
+                if (class_exists($class)) {
+                    return true;
+                }
+
+                // Handle deprecated 1.x annotations
+                if ($namespace === 'Swagger\Annotations\\') {
+                    $shortName = strtolower(substr($class, 20));
+                    if (in_array($shortName, ['model', 'resource', 'api'])) {
+                        throw new Exception('The annotation @SWG\\' . substr($class, 20) . '() is deprecated. Found in ' . self::$context . "\nFor more information read the migration guide: https://github.com/zircote/swagger-php/blob/master/docs/Migrating-to-v2.md");
+                    }
+                }
+                return false;
+            }
+        }
+        return false;
     }
 
     /**

@@ -23,7 +23,7 @@
     },
     "require": {
         "php": ">=7.2",
-        "doctrine/annotations": "^1.7",
+        "doctrine/annotations": "^2.0",
         "symfony/finder": ">=3.4"
     },
     "autoload": {
